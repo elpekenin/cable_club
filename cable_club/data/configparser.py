@@ -28,7 +28,7 @@ PokeDex = dict[str, PokeInfo]
 # NOTE(elpekenin): mypy complains:
 # >>> error: Missing type parameters for generic type "set"  [type-arg]
 # which is plain wrong :)
-class Universe(set):  # type: ignore[type-arg]
+class _Universe(set):  # type: ignore[type-arg]
     """Custom "set" whose __contains__ always returns True."""
 
     def __contains__(self, item: object) -> bool:
@@ -61,7 +61,7 @@ def parse_pokemon_data(file_path: Path) -> PokeDex:
         if "forms" in section:
             forms = {int(f) for f in section["forms"].split(",") if f}
         else:
-            forms = Universe()
+            forms = _Universe()
 
         # default to {male, female} ~~~~~~~~~~~~~~~~~~~~v
         genders = GENDERS.get(section["gender_ratio"], {0, 1})

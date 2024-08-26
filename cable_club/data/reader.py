@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, TypeVar
 
 from cable_club import exceptions
 from cable_club.constants import UTF8
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 T = TypeVar("T")
 

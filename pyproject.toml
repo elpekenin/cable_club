@@ -1,11 +1,26 @@
 [project]
 name = "cable_club"
+description = "Cable Club server for Pokemon Essentials Deluxe"
+version = "0.0.0"
 requires-python = ">= 3.10"
+dependencies = ["distlib"]
+
+[project.scripts]
+cable_club = "cable_club:main.main"
+
+[project.urls]
+Documentation = "https://TODO.org"
+Repository = "https://github.com/elpekenin/cable_club"
+
+[project.optional-dependencies]
+debug = ["debugpy"]
+dev = ["pre-commit"]
+docs = ["sphinx", "furo"]
 
 [tool.ruff]
 target-version = "py310"
 # leave the original code as is, no linting nor formatting
-exclude = ["vendor"]
+exclude = ["vendor", "docs"]
 include = ["cable_club/*", "test/*"]
 
 [tool.ruff.lint]
@@ -16,5 +31,15 @@ select = ["ALL"]
 
 [tool.mypy]
 python_version = "3.10"
-exclude = "vendor"
+exclude = ["vendor", "docs"]
 strict = true
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["cable_club"]
+
+[tool.setuptools_scm]
+write_to = "cable_club/_version.py"

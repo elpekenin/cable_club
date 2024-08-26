@@ -1,7 +1,12 @@
 __pycache__
 
-venv
-.venv
+# artifacts from pip install .
+build
+cable_club.egg-info
+_version.py
+
+# sphinx
+_build
 
 # just for local testing
 PBS

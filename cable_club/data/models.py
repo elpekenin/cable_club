@@ -6,14 +6,14 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, final
 
-from typing_extensions import Self
-
 from cable_club import constants, exceptions
 from cable_club.constants import ABILITIES_FILE, ITEMS_FILE, MOVES_FILE, POKEMONS_FILE
 
 from . import configparser, fields
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from cable_club.config import Config
 
     from .reader import Reader
@@ -40,6 +40,8 @@ class Model(ABC):
 
     Note: Is a list, opposed to a set, to preserve the order of the fields, this is
     useful as it informs in which order we parse things from the reader.
+
+    :meta private:
     """
 
     values: fields.ValueStorage

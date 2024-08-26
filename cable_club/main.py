@@ -83,8 +83,3 @@ def main() -> NoReturn:
 
     logging.exception("Shouldn't have gotten here...", exc_info=exception)
     sys.exit(1)
-
-
-if __name__ == "__main__":
-    """Run the server."""
-    main()

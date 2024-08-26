@@ -4,14 +4,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Generic, TypeVar, cast, final, overload
 
-from typing_extensions import Self
-
 from cable_club import exceptions, utils
 
 if TYPE_CHECKING:
     from collections.abc import Container
 
+    from typing_extensions import Self
+
     from .models import Model
+else:
+
+    class Self:
+        """Stub class.
+
+        Prevent pulling typing_extensions at runtime while keeping Self available
+        for the cast() call.
+
+        :meta private:
+        """
+
 
 T = TypeVar("T")
 

@@ -14,9 +14,4 @@ Notes:
 
 If you feel like opening a PR... Thanks!
 
-To do so, please run:
-```bash
-$ pip install -r requirements-dev.txt
-$ pre-commit install
-``` 
-...To make sure CICD checks (format, linter, etc) are run against your code when you do a `git commit`. If possible/needed, add tests to cover your changes.
+No guidelines, just do!

@@ -12,19 +12,22 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Generic, TypeVar, cast, final, overload
 
-from typing_extensions import Self
-
 from . import exceptions
 from .version import Version
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from typing_extensions import Self
+
 T = TypeVar("T")
 
 
 class Setting(Generic[T]):
-    """Data descriptor for the settings."""
+    """Data descriptor for the settings.
+
+    :meta private:
+    """
 
     # TODO(elpekenin): change logic, similar to models, to store on instance
     # instead of self? could cause some weird behavior with current code if there are
@@ -112,7 +115,10 @@ class Config(ABC):
     _fields: list[str]
 
     class Sentinel:
-        """Used to mark that get() did not find a value and fall back to default."""
+        """Used to mark that get() did not find a value and fall back to default.
+
+        :meta private:
+        """
 
     host = Setting(
         key="HOST",

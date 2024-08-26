@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.5.5
+    hooks:
+      # Run the linter.
+      - id: ruff
+        # allow commiting with TODO and FIXME comments
+        args: [ "--fix", "--extend-ignore", "TD", "--extend-ignore", "FIX"]
+      # Run the formatter.
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.0
+    hooks:
+    - id: mypy
+      additional_dependencies: ["debugpy", "distlib"]
+  - repo: local
+    hooks:
+      - id: unittest
+        name: unittest
+        entry: python runner
+        language: python
+        types: [python]
+        additional_dependencies: ["typing_extensions", "distlib"]

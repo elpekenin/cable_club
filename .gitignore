@@ -1,0 +1,10 @@
+__pycache__
+
+venv
+.venv
+
+# just for local testing
+PBS
+
+*.log
+server_config.py

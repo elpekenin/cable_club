@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+"""Tiny wrapper on top of unittest, to integrate it with pre-commit."""
+
+import sys
+import unittest
+from pathlib import Path
+
+
+def main() -> int:
+    """Run unittest on all input files (if they are tests)."""
+    # remove this script from argv, to then iterate other args (files)
+    _ = sys.argv.pop(0)
+
+    # "executable name" is a hint for better messaging
+    exe = Path(sys.executable).name + "-m unittest"
+
+    for file in sys.argv:
+        if "test/" not in file:
+            continue
+
+        path = Path(file)
+        folder, module = str(path.parent), path.stem
+
+        # add folder to path, so that we can import by file name
+        if folder not in sys.path:
+            sys.path.insert(0, folder)
+
+        test = unittest.main(module=module, argv=[exe], exit=False)
+        if not test.result.wasSuccessful():
+            return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

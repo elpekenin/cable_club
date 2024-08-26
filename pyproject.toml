@@ -1,0 +1,20 @@
+[project]
+name = "cable_club"
+requires-python = ">= 3.10"
+
+[tool.ruff]
+target-version = "py310"
+# leave the original code as is, no linting nor formatting
+exclude = ["vendor"]
+include = ["cable_club/*", "test/*"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"test/*" = ["PT"]
+
+[tool.mypy]
+python_version = "3.10"
+exclude = "vendor"
+strict = true

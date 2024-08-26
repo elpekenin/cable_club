@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Connect to running server",
+            "type": "debugpy",
+            "request": "attach",
+            // configure below according to your system
+            "connect": {
+                "host": "elraspberrin",
+                "port": 4321
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "/home/elpekenin/cable_club"
+                }
+            ]
+        }
+    ]
+}

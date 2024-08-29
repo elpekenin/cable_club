@@ -2,6 +2,10 @@
 
 from importlib import metadata
 
-__version__ = metadata.version("cable_club")
+try:
+    __version__ = metadata.version("cable_club")
+except metadata.PackageNotFoundError:
+    __version__ = "<unknown>"
+
 
 del metadata

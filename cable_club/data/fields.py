@@ -72,7 +72,7 @@ class Base(Generic[T]):
         # make sure storage exists
         try:
             # ruff false positive about some pandas anti-pattern
-            _ = instance.values  # noqa: PD011
+            _ = instance.values
         except AttributeError:
             # Model.__setattr__ will throw warning about assigning to "values"
             # but this place is intended to do so, thus silence it

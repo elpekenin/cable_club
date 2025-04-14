@@ -52,7 +52,7 @@ class Setting(Generic[T]):
             if raw is not Config.Sentinel:
                 # mypy doesnt understand that `is not` cancels out the possibility of
                 # raw being type[Sentinel]
-                value = self.do_convert(cast(str | T, raw))
+                value = self.do_convert(cast("str | T", raw))
             else:
                 value = self.default
                 repr_ = repr(self.default)
@@ -88,7 +88,7 @@ class Setting(Generic[T]):
         # mypy somehow infers str | T, instead of str
         # even though it does note that expected_type is type[T]
         # weird...
-        raw = cast(str, raw)
+        raw = cast("str", raw)
         converted = self.convert(raw)
         if isinstance(converted, expected_type):
             return converted
@@ -321,8 +321,7 @@ class PyFileConfig(Config):
         except ImportError:
             file = None
             msg = (
-                f"No configuration file (`{file_name}.py`) found."
-                " Using default values."
+                f"No configuration file (`{file_name}.py`) found. Using default values."
             )
             warnings.warn(msg, stacklevel=2)
 

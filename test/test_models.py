@@ -2,9 +2,7 @@
 
 import unittest
 
-from cable_club import utils as cc_utils
-from cable_club.data import models
-from cable_club.data.reader import Reader
+from cable_club.data import Reader, models
 from test import fixtures
 from test import utils as test_utils
 
@@ -21,9 +19,7 @@ class ModelTest(unittest.TestCase):
             TERA_INSTALLED=True,
         )
 
-        # do not pollute test log with warnings
-        with cc_utils.disable_warnings():
-            models.configure(config)
+        models.configure(config)
 
         return super().setUpClass()
 
@@ -49,15 +45,12 @@ class ModelTest(unittest.TestCase):
             "win_text",
             "lose_text",
         ):
-            reader.consume()
+            reader.read()
 
         return reader
 
     def test_parsing(self) -> None:
         """Confirm that parsing correct values does work."""
         reader = self.reader_factory()
-
-        with cc_utils.disable_warnings():
-            party = models.Party.read_from(reader)
-
-        self.assertEqual(6, party.n_pokemon)
+        party = models.Party.read_from(reader)
+        self.assertEqual(6, len(party.pokemons))

@@ -7,13 +7,12 @@ from __future__ import annotations
 
 import logging
 import os
-import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Generic, TypeVar, cast, final, overload
 
-from . import exceptions
-from .version import Version
+from cable_club import exceptions
+from cable_club.version import Version
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
 T = TypeVar("T")
+logger = logging.getLogger(__name__)
 
 
 class Setting(Generic[T]):
@@ -52,12 +52,14 @@ class Setting(Generic[T]):
             if raw is not Config.Sentinel:
                 # mypy doesnt understand that `is not` cancels out the possibility of
                 # raw being type[Sentinel]
-                value = self.do_convert(cast(str | T, raw))
+                value = self.do_convert(cast("str | T", raw))
             else:
                 value = self.default
-                repr_ = repr(self.default)
-                msg = f"Could not read setting '{self.key}', using default ({repr_})."
-                warnings.warn(msg, stacklevel=2)
+                logger.debug(
+                    "'%s' was not configured, using default (%s).",
+                    self.key,
+                    self.default,
+                )
 
             self._value = value
 
@@ -88,7 +90,7 @@ class Setting(Generic[T]):
         # mypy somehow infers str | T, instead of str
         # even though it does note that expected_type is type[T]
         # weird...
-        raw = cast(str, raw)
+        raw = cast("str", raw)
         converted = self.convert(raw)
         if isinstance(converted, expected_type):
             return converted
@@ -266,28 +268,6 @@ class Config(ABC):
     )
     """Focus Meter System."""
 
-    # security warning!! only enable if you know what you are doing
-    debug = Setting(
-        key="DEBUG",
-        default=False,
-        convert=bool,
-    )
-    """Whether or not remote debugger is enabled."""
-
-    debug_host = Setting(
-        key="DEBUG_HOST",
-        default="",
-        convert=str,
-    )
-    """Address to listen on."""
-
-    debug_port = Setting(
-        key="DEBUG_PORT",
-        default=0,
-        convert=int,
-    )
-    """Port on which debugpy (remote debugger) will be listening."""
-
     @abstractmethod
     def get(self, key: str) -> str | T | type[Config.Sentinel]:
         """Backend-specific way to grab a configuration or mark it was not found."""
@@ -306,7 +286,7 @@ class Config(ABC):
     @final
     def __repr__(self) -> str:
         """Represent the config."""
-        classname = self.__class__.__name__
+        classname = type(self).__name__
         return f"<{classname}: {self}>"
 
 
@@ -320,11 +300,10 @@ class PyFileConfig(Config):
             file = __import__(file_name)
         except ImportError:
             file = None
-            msg = (
-                f"No configuration file (`{file_name}.py`) found."
-                " Using default values."
+            logger.debug(
+                "Configuration file (`%s.py`) not found. Using default values.",
+                file_name,
             )
-            warnings.warn(msg, stacklevel=2)
 
         self._file = file
 

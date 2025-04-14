@@ -15,6 +15,4 @@ UTF8 = "utf8"
 UTF8_SIG = "utf-8-sig"
 
 LOG_FILE = "server.log"
-LOG_FORMAT = (
-    "[%(asctime)s] %(levelname)s - %(name)s (%(pathname)s:%(lineno)d) %(message)s"
-)
+LOG_FORMAT = "[%(levelname)s] %(name)s: %(message)s"

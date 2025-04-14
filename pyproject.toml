@@ -3,7 +3,10 @@ name = "cable_club"
 description = "Cable Club server for Pokemon Essentials Deluxe"
 version = "0.0.0"
 requires-python = ">= 3.10"
-dependencies = ["distlib"]
+dependencies = [
+    "distlib",
+    "typing_extensions",
+]
 
 [project.scripts]
 cable_club = "cable_club:main.main"
@@ -13,7 +16,6 @@ Documentation = "https://TODO.org"
 Repository = "https://github.com/elpekenin/cable_club"
 
 [project.optional-dependencies]
-debug = ["debugpy"]
 dev = ["pre-commit"]
 docs = ["sphinx", "furo"]
 

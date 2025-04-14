@@ -9,7 +9,7 @@ from cable_club.constants import UTF8
 if typing.TYPE_CHECKING:
     from socket import socket
 
-    from cable_club.network.client import Client
+    from cable_club.network import Client
 
 
 class Writer:

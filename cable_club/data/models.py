@@ -1,22 +1,22 @@
 """Models for data sent over the wire."""
 
+# ruff: noqa: RUF023
+
 from __future__ import annotations
 
-import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, ClassVar, final
 
-from cable_club import constants, exceptions
+from cable_club import constants
 from cable_club.constants import ABILITIES_FILE, ITEMS_FILE, MOVES_FILE, POKEMONS_FILE
-
-from . import configparser, fields
+from cable_club.data import configparser
+from cable_club.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from typing_extensions import Self
 
     from cable_club.config import Config
-
-    from .reader import Reader
+    from cable_club.data import Reader
 
 
 # TODO(elpekenin): some sentinel value on the not-yet-configured fields
@@ -33,47 +33,21 @@ class Model(ABC):
     config: Config
     """Not present until configure() gets called."""
 
-    attributes: list[str]
-    """Name of each field in this class.
-
-    Auto-magically updated by classes on :py:mod:`cable_club.data.fields`.
-
-    Note: Is a list, opposed to a set, to preserve the order of the fields, this is
-    useful as it informs in which order we parse things from the reader.
-
-    :meta private:
-    """
-
-    values: fields.ValueStorage
-    """Actual storage of the fields."""
+    __slots__: tuple[str, ...]
 
     @final
     def __repr__(self) -> str:
         """Represent an instance as string."""
-        classname = self.__class__.__name__
+        classname = type(self).__name__
 
         reprs: list[str] = []
-        for field in self.attributes:
-            raw = getattr(self, field, "NOTSET")
+        for field in self.__slots__:
+            raw = getattr(self, field, "NOT_SET")
             repr_ = repr(raw)
             reprs.append(f"{field}: {repr_}")
 
         body = ", ".join(reprs)
         return f"<{classname}: {body}>"
-
-    @final
-    def __setattr__(self, name: str, value: object) -> None:
-        """Avoid assigning unidentified fields."""
-        if name == "values":
-            msg = "Do not edit the 'values' attribute."
-            warnings.warn(msg, stacklevel=2)
-
-        elif name not in self.attributes:
-            classname = self.__class__.__name__
-            msg = f"{classname}.{name} is not a field defined on the model."
-            raise exceptions.UnknownFieldError(msg)
-
-        super().__setattr__(name, value)
 
     @abstractmethod
     def do_read_from(self, reader: Reader) -> None:
@@ -100,106 +74,123 @@ class Model(ABC):
 class Move(Model):
     """Represent a Pokemon's move."""
 
-    name: fields.OneOf[str] = fields.OneOf()
+    __slots__ = ("name",)
+
+    names: ClassVar[set[str]] = set()
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.name = reader.consume()
+        self.name = reader.one_of(options=self.names)
 
 
 class SketchedMove(Model):
     """Represent a Pokemon's move obtained via sketch."""
 
-    name: fields.OneOf[str] = fields.OneOf()
-
-    ppup = fields.Int(
-        min_val=0,
-        max_val=3,
+    __slots__ = (
+        "name",
+        "ppup",
+        "mastery",
     )
 
-    mastery = fields.OptionalBool()
+    names: ClassVar[set[str]] = set()
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.name = reader.consume()
-
-        self.ppup = reader.consume_int()
+        self.name = reader.one_of(options=self.names)
+        self.ppup = reader.integer(min_val=0, max_val=3)
 
         if self.config.pla_installed:
-            self.mastery = reader.consume_bool_or_none()
+            self.mastery = reader.boolean(allow_none=True)
 
 
-class IV(Model):
+class Iv(Model):
     """Represent a Pokemon's IV."""
 
-    val = fields.Int(min_val=0)
+    __slots__ = (
+        "val",
+        "maxed",
+    )
 
-    maxed = fields.OptionalBool()
+    max_val: ClassVar[int] = 0
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.val = reader.consume_int()
-        self.maxed = reader.consume_bool_or_none()
+        self.val = reader.integer(
+            min_val=0,
+            max_val=self.max_val,
+        )
+        self.maxed = reader.boolean(allow_none=True)
 
 
-class EV(Model):
+class Ev(Model):
     """Represent a Pokemon's EV."""
 
-    val = fields.Int(min_val=0)
+    __slots__ = ("val",)
+
+    max_val: ClassVar[int] = 0
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.val = reader.consume_int()
+        self.val = reader.integer(
+            min_val=0,
+            max_val=self.max_val,
+        )
 
 
 class ObtainStats(Model):
     """Represent how a Pokémon was obtained."""
 
-    mode = fields.Int(min_val=0)
-    map = fields.Int(min_val=0)
-    text = fields.Str()
-    level = fields.Int(min_val=0)
-    hatched_map = fields.Int(min_val=0)
+    __slots__ = (
+        "mode",
+        "map",
+        "text",
+        "level",
+        "hatched_map",
+    )
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.mode = reader.consume_int()
-        self.map = reader.consume_int()
-        self.text = reader.consume()
-        self.level = reader.consume_int()
-        self.hatched_map = reader.consume_int()
+        self.mode = reader.integer(min_val=0)
+        self.map = reader.integer(min_val=0)
+        self.text = reader.read()
+        self.level = reader.integer(min_val=0)
+        self.hatched_map = reader.integer(min_val=0)
 
 
 class ContestStats(Model):
     """Represent a Pokémon stats for contests."""
 
-    cool = fields.Int(min_val=0)
-    beauty = fields.Int(min_val=0)
-    cute = fields.Int(min_val=0)
-    smart = fields.Int(min_val=0)
-    tough = fields.Int(min_val=0)
-    sheen = fields.Int(min_val=0)
+    __slots__ = (
+        "cool",
+        "beauty",
+        "cute",
+        "smart",
+        "tough",
+        "sheen",
+    )
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.cool = reader.consume_int()
-        self.beauty = reader.consume_int()
-        self.cute = reader.consume_int()
-        self.smart = reader.consume_int()
-        self.tough = reader.consume_int()
-        self.sheen = reader.consume_int()
+        self.cool = reader.integer(min_val=0)
+        self.beauty = reader.integer(min_val=0)
+        self.cute = reader.integer(min_val=0)
+        self.smart = reader.integer(min_val=0)
+        self.tough = reader.integer(min_val=0)
+        self.sheen = reader.integer(min_val=0)
 
 
 class EssentialDeluxeProperties(Model):
     """Represent optional fields based on game/server configuration."""
 
-    scale = fields.Int(min_val=0)
-    memento = fields.Str()
-    dmax_level = fields.Int(min_val=0)
-    gmax_factor = fields.Bool()
-    dmax_able = fields.Bool()
-    tera_type = fields.Str()
-    focus_type = fields.Str()
+    __slots__ = (
+        "scale",
+        "memento",
+        "dmax_level",
+        "gmax_factor",
+        "dmax_able",
+        "tera_type",
+        "focus_type",
+    )
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
@@ -207,54 +198,62 @@ class EssentialDeluxeProperties(Model):
             self.config.essentials_deluxe_installed
             or self.config.mui_mementos_installed
         ):
-            self.scale = reader.consume_int()
+            self.scale = reader.integer(min_val=0)
+
         if self.config.mui_mementos_installed:
-            self.memento = reader.consume()
+            self.memento = reader.read()
+
         if self.config.zud_dynamax_installed:
-            self.dmax_level = reader.consume_int()
-            self.gmax_factor = reader.consume_bool()
-            self.dmax_able = reader.consume_bool()
+            self.dmax_level = reader.integer(min_val=0)
+            self.gmax_factor = reader.boolean()
+            self.dmax_able = reader.boolean()
+
         if self.config.tera_installed:
-            self.tera_type = reader.consume()
+            self.tera_type = reader.read()
+
         if self.config.focus_installed:
-            self.focus_type = reader.consume()
+            self.focus_type = reader.read()
 
 
 class _MailSpecies(Model):
     """Pokemon data on a mail."""
 
-    gender = fields.Int(min_val=0)
-    shiny = fields.Bool()
-    form = fields.Int(min_val=0)
-    shadow = fields.Bool()
-    egg = fields.Bool()
+    __slots__ = (
+        "gender",
+        "shiny",
+        "form",
+        "shadow",
+        "egg",
+    )
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.gender = reader.consume_int()
-        self.shiny = reader.consume_bool()
-        self.form = reader.consume_int()
-        self.shadow = reader.consume_bool()
-        self.egg = reader.consume_bool()
+        self.gender = reader.integer(min_val=0)
+        self.shiny = reader.boolean()
+        self.form = reader.integer(min_val=0)
+        self.shadow = reader.boolean()
+        self.egg = reader.boolean()
 
 
 class Mail(Model):
     """Data on a mail."""
 
-    item = fields.Str()
-    msg = fields.Str()
-    sender = fields.Str()
-    species: fields.Base[list[_MailSpecies]] = fields.Base()
+    __slots__ = (
+        "item",
+        "msg",
+        "sender",
+        "species",
+    )
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.item = reader.consume()
-        self.msg = reader.consume()
-        self.sender = reader.consume()
+        self.item = reader.read()
+        self.msg = reader.read()
+        self.sender = reader.read()
 
-        self.species = []
+        self.species: list[_MailSpecies] = []
         for _ in range(3):
-            has_species = reader.consume_int_or_none()
+            has_species = reader.integer(allow_none=True)
             if has_species:
                 self.species.append(_MailSpecies.read_from(reader))
 
@@ -264,153 +263,119 @@ class Pokemon(Model):
 
     # TODO(elpekenin): move related fields into classes
 
-    species: fields.OneOf[str] = fields.OneOf()
-
-    level = fields.Int(min_val=1)
-
-    personal_id = fields.Int(min_val=0)
-
-    owner_id = fields.Int(
-        # NOTE(elpekenin): original code used if owner_id & ~0xFFFFFFFF
-        # which i believe is equivalent max_val = flag+1
-        max_val=0xFFFFFFFF + 1,
-    )
-    owner_name = fields.Str()
-    owner_gender = fields.OneOf(options={0, 1})
-
-    exp = fields.Int(min_val=0)  # TODO(original author): validate exp
-
-    form = fields.Int(min_val=0)
-
-    item: fields.OneOf[str] = fields.OneOf()
-
-    sketched_moves: fields.Base[list[SketchedMove]] = fields.Base()
-    regular_moves: fields.Base[list[Move]] = fields.Base()
-    mastered_moves: fields.Base[list[Move]] = fields.Base()
-
-    gender = fields.OneOf(options={0, 1, 2})
-
-    shiny = fields.OptionalBool()
-
-    ability: fields.OneOf[str] = fields.OneOf()
-    ability_index = fields.OptionalInt(min_val=0)
-
-    nature_id = fields.Str()
-    nature_stats_id = fields.Str()
-
-    ivs: fields.Base[list[IV]] = fields.Base()
-
-    evs: fields.Base[list[EV]] = fields.Base()
-    ev_sum = fields.Int(min_val=0)
-
-    happiness = fields.Int(
-        min_val=0,
-        max_val=255,
+    __slots__ = (
+        "species",
+        "level",
+        "personal_id",
+        "owner_id",
+        "owner_name",
+        "owner_gender",
+        "exp",
+        "form",
+        "item",
+        "sketched_moves",
+        "regular_moves",
+        "mastered_moves",
+        "gender",
+        "shiny",
+        "ability",
+        "ability_index",
+        "nature_id",
+        "nature_stats_id",
+        "ivs",
+        "evs",
+        "happiness",
+        "name",
+        "pokeball",
+        "steps_to_hatch",
+        "pokerus",
+        "obtain_stats",
+        "contest_stats",
+        "ribbons",
+        "essential_deluxe_properties",
+        "mail",
+        "fusion",
     )
 
-    name = fields.Str()
-
-    pokeball: fields.OneOf[str] = fields.OneOf()
-
-    steps_to_hatch = fields.Int(min_val=0)
-
-    pokerus = fields.Int(min_val=0)
-
-    obtain_stats: fields.Base[ObtainStats] = fields.Base()
-
-    contest_stats: fields.Base[ContestStats] = fields.Base()
-
-    ribbons: fields.Base[list[str]] = fields.Base()
-
-    essential_deluxe_properties: fields.Base[EssentialDeluxeProperties] = fields.Base()
-
-    mail: fields.Base[Mail] = fields.Base()
-
-    fusion: fields.Base[Pokemon] = fields.Base()
+    species_names: ClassVar[set[str]] = set()
+    max_level: ClassVar[int] = 0
+    max_owner_name_len: ClassVar[int] = 0
+    item_names: ClassVar[set[str]] = set()
+    ability_names: ClassVar[set[str]] = set()
+    max_ev_sum: ClassVar[int] = 0
+    pokeball_names: ClassVar[set[str]] = set()
+    max_name_len: ClassVar[int] = 0
 
     # ruff doesnt like the code being this long, but we dont care :)
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.species = reader.consume()
+        self.species = reader.one_of(options=self.species_names)
+        self.level = reader.integer(min_val=1)
+        self.personal_id = reader.integer(min_val=0)
+        self.owner_id = reader.integer(
+            # NOTE(elpekenin): original code used if owner_id & ~0xFFFFFFFF
+            # which i believe is equivalent max_val = flag+1
+            max_val=0xFFFFFFFF + 1,
+        )
+        self.owner_name = reader.read(max_len=self.max_owner_name_len)
+        self.owner_gender = reader.integer(min_val=0, max_val=1)
+        self.exp = reader.integer(min_val=0)
+        self.form = reader.integer(min_val=0)
+        self.item = reader.one_of(options=self.item_names)
 
-        self.level = reader.consume_int()
-
-        self.personal_id = reader.consume_int()
-
-        self.owner_id = reader.consume_int()
-        self.owner_name = reader.consume()
-        self.owner_gender = reader.consume_int()
-
-        self.exp = reader.consume_int()
-
-        self.form = reader.consume_int()
-
-        self.item = reader.consume()
-
-        self.sketched_moves = []
-        n_sketched_moves = reader.consume_int()
+        self.sketched_moves: list[SketchedMove] = []
+        n_sketched_moves = reader.integer(min_val=0)
         for _ in range(n_sketched_moves):
             self.sketched_moves.append(SketchedMove.read_from(reader))
 
-        self.regular_moves = []
-        n_regular_moves = reader.consume_int()
+        self.regular_moves: list[Move] = []
+        n_regular_moves = reader.integer(min_val=0)
         for _ in range(n_regular_moves):
             self.regular_moves.append(Move.read_from(reader))
 
         if self.config.pla_installed:
-            self.mastered_moves = []
-            n_mastered_moves = reader.consume_int()
+            self.mastered_moves: list[Move] = []
+            n_mastered_moves = reader.integer(min_val=0)
             for _ in range(n_mastered_moves):
                 self.mastered_moves.append(Move.read_from(reader))
 
-        self.gender = reader.consume_int()
+        self.gender = reader.integer(min_val=0, max_val=2)
+        self.shiny = reader.boolean()
+        self.ability = reader.one_of(options=self.ability_names)
+        self.ability_index = reader.integer(min_val=0, allow_none=True)
+        self.nature_id = reader.read()
+        self.nature_stats_id = reader.read()
 
-        self.shiny = reader.consume_bool()
-
-        self.ability = reader.consume()
-        self.ability_index = reader.consume_int()
-
-        self.nature_id = reader.consume()
-        self.nature_stats_id = reader.consume()
-
-        self.ivs = []
-        self.evs = []
+        self.ivs: list[Iv] = []
+        self.evs: list[Ev] = []
         for _ in range(6):
-            self.ivs.append(IV.read_from(reader))
-            self.evs.append(EV.read_from(reader))
+            self.ivs.append(Iv.read_from(reader))
+            self.evs.append(Ev.read_from(reader))
 
-        ev_sum = 0
-        for ev in self.evs:
-            ev_sum += ev.val
-        self.ev_sum = ev_sum
-
-        self.happiness = reader.consume_int()
-
-        self.name = reader.consume()
-
-        self.pokeball = reader.consume()
-
-        self.steps_to_hatch = reader.consume_int()
-
-        self.pokerus = reader.consume_int()
-
+        self.happiness = reader.integer(
+            min_val=0,
+            max_val=255,
+        )
+        self.name = reader.read(max_len=self.max_name_len)
+        self.pokeball = reader.one_of(options=self.pokeball_names)
+        self.steps_to_hatch = reader.integer(min_val=0)
+        self.pokerus = reader.integer(min_val=0)
         self.obtain_stats = ObtainStats.read_from(reader)
-
         self.contest_stats = ContestStats.read_from(reader)
 
-        self.ribbons = []
-        n_ribbons = reader.consume_int()
+        self.ribbons: list[str] = []
+        n_ribbons = reader.integer(min_val=0)
         for _ in range(n_ribbons):
-            self.ribbons.append(reader.consume())
+            self.ribbons.append(reader.read())
 
         self.essential_deluxe_properties = EssentialDeluxeProperties.read_from(reader)
 
         # mail
-        has_mail = reader.consume_bool()
+        has_mail = reader.boolean()
         if has_mail:
             self.mail = Mail.read_from(reader)
 
-        fused = reader.consume_bool()
+        fused = reader.boolean()
         if fused:
             self.fusion = Pokemon.read_from(reader)
 
@@ -430,7 +395,7 @@ class Pokemon(Model):
                     f"{self.species} can not learn any move to copy moves (eg: sketch)."
                     " Thus, it can not specify any moves as learnt this way."
                 )
-                raise exceptions.ValidationError(msg)
+                raise ValidationError(msg)
 
             for move in (
                 *self.regular_moves,
@@ -438,17 +403,24 @@ class Pokemon(Model):
             ):
                 if move.name not in moves:
                     msg = f"{self.species} can not learn {move}."
-                    raise exceptions.ValidationError(msg)
+                    raise ValidationError(msg)
 
         genders = pokemon["genders"]
         if self.gender not in genders:
             msg = f"{self.species} can not have gender={self.gender}"
-            raise exceptions.ValidationError(msg)
+            raise ValidationError(msg)
 
         forms = pokemon["forms"]
         if self.form not in forms:
             msg = f"{self.species} can not have form={self.form}"
-            raise exceptions.ValidationError(msg)
+            raise ValidationError(msg)
+
+        ev_sum = 0
+        for ev in self.evs:
+            ev_sum += ev.val
+        if ev_sum > self.max_ev_sum:
+            msg = "ev sum exceeds maximum configured value"
+            raise ValidationError(msg)
 
         # TODO(elpekenin): check if any validation is missing
 
@@ -456,43 +428,41 @@ class Pokemon(Model):
 class Party(Model):
     """A team of Pokemon."""
 
-    n_pokemon = fields.Int(min_val=0)
-    pokemons: fields.Base[list[Pokemon]] = fields.Base()
+    __slots__ = ("pokemons",)
 
     def do_read_from(self, reader: Reader) -> None:
         """Initialize an instance by reading input."""
-        self.pokemons = []
-        self.n_pokemon = reader.consume_int()
-        for _ in range(self.n_pokemon):
+        self.pokemons: list[Pokemon] = []
+        n_pokemon = reader.integer(min_val=0)
+        for _ in range(n_pokemon):
             self.pokemons.append(Pokemon.read_from(reader))
 
-        leftovers = reader.raw_all()
+        leftovers = reader.left()
         if leftovers:
             rest = ", ".join(leftovers)
             msg = f"Data left in reader: {rest}"
-            raise exceptions.ValidationError(msg)
+            raise ValidationError(msg)
 
 
 def configure(config: Config) -> None:
     """Apply configuration on fields that depend on it."""
+    items = configparser.sections(config.pbs_dir / ITEMS_FILE)
+
     Model.config = config
 
     # max int values
-    IV.val.max_val = config.iv_stat_limit
-    EV.val.max_val = config.ev_stat_limit
-    Pokemon.ev_sum.max_val = config.ev_limit
-    Pokemon.level.max_val = config.maximum_level
-
-    # max text len
-    Pokemon.owner_name.max_len = config.player_max_name_size
-    Pokemon.name.max_len = config.pokemon_max_name_size
+    Iv.max_val = config.iv_stat_limit
+    Ev.max_val = config.ev_stat_limit
 
     # set of posible values
-    Move.name.options = SketchedMove.name.options = configparser.sections(
+    Move.names = SketchedMove.names = configparser.sections(
         config.pbs_dir / MOVES_FILE,
     )
-    Pokemon.species.options = configparser.sections(config.pbs_dir / POKEMONS_FILE)
-    Pokemon.ability.options = configparser.sections(config.pbs_dir / ABILITIES_FILE)
-    Pokemon.item.options = Pokemon.pokeball.options = configparser.sections(
-        config.pbs_dir / ITEMS_FILE,
-    )
+    Pokemon.species_names = configparser.sections(config.pbs_dir / POKEMONS_FILE)
+    Pokemon.max_level = config.maximum_level
+    Pokemon.max_owner_name_len = config.player_max_name_size
+    Pokemon.item_names = items | {""}  # allow no item
+    Pokemon.ability_names = configparser.sections(config.pbs_dir / ABILITIES_FILE)
+    Pokemon.max_ev_sum = config.ev_limit
+    Pokemon.pokeball_names = items
+    Pokemon.max_name_len = config.pokemon_max_name_size

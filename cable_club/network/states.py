@@ -6,17 +6,15 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from cable_club import exceptions
-from cable_club.data import models
-from cable_club.data.reader import Reader
+from cable_club.data import Reader, models
+from cable_club.exceptions import ExhaustedReaderError, ValidationError
 from cable_club.version import Version
 
 if TYPE_CHECKING:
     from socket import socket
 
-    from cable_club.data.writer import Writer
-
-    from .server import Server
+    from cable_club.data import Writer
+    from cable_club.network import Server
 
 _logger = logging.getLogger(__name__)
 
@@ -52,32 +50,28 @@ class Connecting(State):
             server.disconnect(socket, "invalid content")
             return self, False
 
-        if reader.consume() != "find":
+        if reader.read() != "find":
             server.disconnect(socket, "not a cable_club message")
             return self, False
 
-        version = reader.consume()
+        version = reader.read()
         if not Version(version) >= server.config.game_version:
             server.disconnect(socket, "invalid version")
             return self, False
 
-        peer_id = int(reader.consume())
-        name = reader.consume()
-        id_ = int(reader.consume())
-        trainertype = reader.consume()
-        win_text = reader.consume()
-        lose_text = reader.consume()
-        party_raw = reader.raw_all()
+        peer_id = reader.integer()
+        name = reader.read()
+        id_ = reader.integer()
+        trainertype = reader.read()
+        win_text = reader.read()
+        lose_text = reader.read()
+        party_raw = reader.left()
 
         try:
             party = models.Party.read_from(reader)
-        except exceptions.ExhaustedReaderError:
-            msg = "party's stream was incomplete."
-            server.disconnect(socket, msg)
-            return self, False
-        except exceptions.ValidationError:
-            msg = "invalid party"
-            server.disconnect(socket, msg)
+        except (ExhaustedReaderError, ValidationError):
+            _logger.exception("invalid party")
+            server.disconnect(socket, "invalid party")
             return self, False
 
         state = Finding(

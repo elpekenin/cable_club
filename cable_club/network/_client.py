@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .states import Connecting, State
+from cable_club.network.states import Connecting, State
 
 
 class Client:

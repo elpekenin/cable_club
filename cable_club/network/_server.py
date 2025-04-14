@@ -9,11 +9,9 @@ import time
 from typing import TYPE_CHECKING
 
 from cable_club import watcher
-from cable_club.data import models
-from cable_club.data.writer import Writer
-
-from .client import Client
-from .states import Connected, Finding
+from cable_club.data import Writer, models
+from cable_club.network import Client
+from cable_club.network.states import Connected, Finding
 
 if TYPE_CHECKING:
     from cable_club.config import Config

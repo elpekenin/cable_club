@@ -20,6 +20,6 @@ class TestConfig(config.Config):
     ) -> T | type[config.Config.Sentinel]:
         """Get an configuration key."""
         return cast(
-            T | type[config.Config.Sentinel],
+            "T | type[config.Config.Sentinel]",
             self.kwargs.get(key, self.Sentinel),
         )
